@@ -16,6 +16,15 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
+      - name: Extract Android project from ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -q "FloatingBarcodeScanner-Android-Source.zip" -d extracted
+          test -f extracted/FloatingBarcodeScanner/settings.gradle
+          test -f extracted/FloatingBarcodeScanner/app/build.gradle
+          echo "Android source extraction succeeded"
+
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -34,21 +43,18 @@ jobs:
           SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
           echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
-
           if [ ! -f "$SDK/platforms/android-35/android.jar" ]; then
-            "$SDK/cmdline-tools/latest/bin/sdkmanager" \
-              --install 'platforms;android-35' \
-              'build-tools;35.0.0'
+            "$SDK/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-35' 'build-tools;35.0.0'
           fi
-
           test -f "$SDK/platforms/android-35/android.jar"
 
       - name: Compile debug APK
+        working-directory: extracted/FloatingBarcodeScanner
         run: gradle --no-daemon --stacktrace assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: FloatingBarcodeScanner-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: extracted/FloatingBarcodeScanner/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
